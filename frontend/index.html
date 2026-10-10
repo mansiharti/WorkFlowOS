@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WorkFlowOS – Desktop Workflow Automation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header>
+    <div class="brand">
+      <span>WorkFlow<span style="color: var(--primary);">OS</span></span>
+      <span class="brand-badge">AI AGENT</span>
+    </div>
+
+    <nav>
+      <button class="nav-btn active" onclick="switchTab('chat')">💬 Chat</button>
+      <button class="nav-btn" onclick="switchTab('teach')">🎓 Teach by Doing</button>
+      <button class="nav-btn" onclick="switchTab('workflows')">⚡ My Workflows</button>
+      <button class="nav-btn" onclick="switchTab('activity')">📊 Activity</button>
+      <button class="nav-btn" onclick="switchTab('settings')">⚙️ Settings</button>
+    </nav>
+
+    <div class="header-actions">
+      <!-- Activity Recording Status Badge -->
+      <div id="recording-badge" class="rec-badge not-rec" onclick="handleBadgeClick()">
+        <span class="pulse-dot" id="rec-dot"></span>
+        <span id="recording-badge-text">🟢 NOT RECORDING</span>
+      </div>
+
+      <!-- Mode Switcher -->
+      <div class="mode-container">
+        <span class="mode-label" id="top-mode-indicator" style="font-weight: 800;">MODE: REAL</span>
+        <div class="mode-btn-group">
+          <button id="mode-sandbox-btn" class="mode-toggle-btn" onclick="setMode('SANDBOX')">Sandbox</button>
+          <button id="mode-real-btn" class="mode-toggle-btn active-real" onclick="setMode('REAL')">Real Desktop</button>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary btn-sm" onclick="showSandboxModal()">📁 Sandbox Explorer</button>
+    </div>
+  </header>
+
+  <!-- Main Body Content -->
+  <main>
+
+    <!-- 1. CHAT TAB -->
+    <div id="tab-chat" class="tab-content active">
+      <div class="chat-layout">
+        <!-- Chat Goal Prompt Box -->
+        <div class="card">
+          <h2 style="font-size: 1.3rem; margin-bottom: 0.35rem;">Chat to Automation</h2>
+          <p style="color: var(--text-muted); font-size: 0.88rem;">
+            Describe your goal in natural language. WorkFlowOS plans structured semantic actions and asks for your <b>ONE-TIME approval</b> before executing the entire workflow.
+          </p>
+
+          <div id="session-warning-banner" style="display: none; background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.4); color: #fda4af; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.88rem;"></div>
+
+          <div class="preset-prompts">
+            <span class="preset-pill" onclick="setChatPrompt('Open Notepad and type Hello from WorkFlowOS.')">
+              📝 Demo 1: Open Notepad & Type
+            </span>
+            <span class="preset-pill" onclick="setChatPrompt('Create a folder called WorkflowOS_Test on my Desktop.')">
+              📁 Demo 2: Create WorkflowOS_Test
+            </span>
+            <span class="preset-pill" onclick="setChatPrompt('Move WorkflowOS_Test.txt into WorkflowOS_Test.')">
+              🚚 Demo 3: Move Test File
+            </span>
+            <span class="preset-pill" onclick="setChatPrompt('Open Notepad')">
+              📝 Open Notepad
+            </span>
+          </div>
+
+          <div class="chat-input-box">
+            <input type="text" id="chat-input" class="chat-input" placeholder="e.g. Create a test folder called TestFolder on the desktop...">
+            <button class="btn btn-primary" id="plan-btn" onclick="submitChatGoal()">Generate Workflow</button>
+          </div>
+
+          <div id="chat-loading" style="display: none; margin-top: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.88rem;">
+            <span>🤖 AI is analyzing your goal and generating a structured workflow plan...</span>
+          </div>
+        </div>
+
+        <!-- Planned Workflow Preview Card (ONE-TIME APPROVAL) -->
+        <div class="card approval-box" id="chat-plan-card" style="display: none;">
+          <div class="approval-title">WORKFLOW READY</div>
+
+          <div style="margin-bottom: 0.85rem;">
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Goal:</div>
+            <div id="plan-goal-text" style="font-size: 0.95rem; font-weight: 600; color: #fff; margin-top: 0.2rem;"></div>
+          </div>
+
+          <div style="margin-bottom: 0.85rem;">
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Actions:</div>
+            <div class="step-list" id="plan-steps-container"></div>
+          </div>
+
+          <div style="display: flex; gap: 1rem; align-items: center; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.6rem 0.85rem; margin-bottom: 1rem; font-size: 0.82rem;">
+            <div>Risk: <span id="plan-risk-badge" class="badge badge-low">LOW</span></div>
+            <div>Confidence: <span id="plan-conf-badge" style="font-weight: 700; color: #34d399;">94%</span></div>
+            <div>Target Mode: <span id="plan-mode-badge" style="font-weight: 700; color: #93c5fd;">SANDBOX</span></div>
+          </div>
+
+          <div style="background: rgba(79, 120, 255, 0.08); border: 1px solid rgba(79, 120, 255, 0.25); border-radius: 8px; padding: 0.85rem; margin-bottom: 1.25rem;">
+            <div style="font-weight: 700; font-size: 0.9rem; color: #fff; margin-bottom: 0.25rem;">
+              Do you want WorkFlowOS to perform this workflow?
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">
+              One approval executes the complete workflow sequentially without asking for permission between individual actions.
+            </div>
+          </div>
+
+          <!-- One-Time Approval Buttons -->
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+            <button class="btn btn-success" id="chat-run-btn" onclick="approveAndRunChatPlan()">
+              ✓ ALLOW & RUN
+            </button>
+            <button class="btn btn-primary" onclick="saveChatPlan()">
+              💾 Save Workflow
+            </button>
+            <button class="btn btn-secondary" onclick="editChatWorkflow()">
+              ✏️ EDIT
+            </button>
+            <button class="btn btn-secondary" onclick="cancelChatWorkflow()">
+              CANCEL
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="triggerDryRun()" style="margin-left: auto;">
+              Dry Run
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Execution Log Result Card -->
+      <div id="exec-result-card" style="display: none; margin-top: 1.5rem;">
+        <div id="exec-box-container" class="result-box-success">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+            <div id="exec-heading" style="font-size: 1.15rem; font-weight: 800; letter-spacing: 0.04em;">WORKFLOW COMPLETED</div>
+            <div id="exec-mode-indicator" class="badge badge-ver">MODE: SANDBOX</div>
+          </div>
+
+          <div style="margin-bottom: 0.85rem;">
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Goal:</div>
+            <div id="exec-goal-display" style="font-size: 0.95rem; font-weight: 600; color: #fff; margin-top: 0.2rem;"></div>
+          </div>
+
+          <div style="margin-bottom: 0.85rem;">
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.4rem;">Result:</div>
+            <div id="exec-steps-summary" style="display: flex; flex-direction: column; gap: 0.45rem; font-family: var(--font-mono); font-size: 0.85rem;"></div>
+          </div>
+
+          <div id="exec-failure-box" style="display: none; background: rgba(244, 63, 94, 0.12); border: 1px solid rgba(244, 63, 94, 0.35); border-radius: 8px; padding: 0.85rem; margin-bottom: 1rem;">
+            <div style="font-weight: 700; color: #fda4af; font-size: 0.88rem;">Failed step: <span id="failed-step-name"></span></div>
+            <div style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0.25rem;">Reason: <span id="failed-step-reason"></span></div>
+          </div>
+
+          <div style="margin-bottom: 1rem; font-size: 0.9rem; font-weight: 700;">
+            Status: <span id="exec-status-word" style="color: #34d399;">SUCCESS</span>
+          </div>
+
+          <div style="display: flex; gap: 0.75rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+            <button class="btn btn-secondary btn-sm" onclick="openCorrectionModal()">💬 Correct Workflow</button>
+            <button class="btn btn-secondary btn-sm" onclick="reportProblem()">⚠️ Report Problem</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 2. TEACH BY DOING TAB -->
+    <div id="tab-teach" class="tab-content">
+      <div class="grid-2">
+        <div class="card">
+          <h2 style="font-size: 1.3rem; margin-bottom: 0.35rem;">Teach by Doing</h2>
+          <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem;">
+            Click <b>Start Teaching</b> and perform your task normally. WorkFlowOS observes desktop activity, converts it into semantic actions, and generates a reusable workflow.
+          </p>
+
+          <div style="display: flex; gap: 0.75rem; margin-bottom: 1.25rem;">
+            <button class="btn btn-primary" id="start-teach-btn" onclick="toggleTeaching()">Start Teaching</button>
+            <button class="btn btn-secondary btn-sm" onclick="simulateTeachDemo('demo1_file_org')">▶️ Simulate Demo 1 (File Org)</button>
+            <button class="btn btn-secondary btn-sm" onclick="simulateTeachDemo('demo3_evolution')">⚡ Simulate Demo 3 (Evolution)</button>
+          </div>
+
+          <div id="recording-live-box" style="display: none; background: rgba(244, 63, 94, 0.08); border: 1px dashed rgba(244, 63, 94, 0.4); border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; color: #fda4af; font-weight: 700; font-size: 0.92rem;">
+                <span class="pulse-dot" style="background: var(--accent-rose);"></span>
+                <span>🔴 RECORDING</span>
+              </div>
+              <span id="teach-live-count" class="badge badge-high" style="font-size: 0.82rem; font-weight: 700;">Actions captured: 0</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 0.65rem 0.85rem; margin-bottom: 0.5rem;">
+              <div>Current action: <b id="teach-current-action" style="color: #38bdf8;">Waiting for user action...</b></div>
+              <div>Active application: <b id="teach-active-app" style="color: #34d399;">Desktop</b></div>
+            </div>
+            <p style="font-size: 0.78rem; color: #94a3b8; margin: 0;">
+              ✨ Always-on-top desktop overlay is floating on your Windows desktop. Perform your workflow normally in any application.
+            </p>
+          </div>
+
+          <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Live Observed Action Stream:</div>
+          <div id="teach-stream" style="background: rgba(0, 0, 0, 0.35); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.85rem; max-height: 250px; overflow-y: auto; font-family: var(--font-mono); font-size: 0.78rem; margin-top: 0.5rem;">
+            <span style="color: var(--text-muted);">No active demonstration recorded yet. Click 'Start Teaching' or run a demonstration above.</span>
+          </div>
+        </div>
+
+        <!-- Detected Workflow & Evolution Proposal -->
+        <div class="card approval-box" id="teach-result-card" style="display: none;">
+          <div class="approval-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span id="teach-result-title" style="font-weight: 800; letter-spacing: 0.5px;">LEARNED WORKFLOW</span>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <span class="badge" id="teach-wf-id-badge" style="background: rgba(147, 197, 253, 0.15); color: #93c5fd; font-family: var(--font-mono); font-weight: 700;">Workflow ID: -- | Recording ID: --</span>
+              <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-weight: 700;" id="teach-actions-captured-count">Actions captured: 0</span>
+              <span class="badge badge-ver" id="teach-plan-ver">VERSION 1</span>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 0.85rem;">
+            <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Goal:</div>
+            <div id="teach-plan-desc" style="font-size: 0.95rem; font-weight: 600; color: #fff; margin-top: 0.2rem;"></div>
+          </div>
+
+          <div id="teach-variables-box" style="display: none; background: rgba(79, 120, 255, 0.08); border: 1px solid rgba(79, 120, 255, 0.25); border-radius: 8px; padding: 0.65rem 0.85rem; margin-bottom: 0.85rem;">
+            <div style="font-size: 0.76rem; text-transform: uppercase; color: #93c5fd; font-weight: 700; margin-bottom: 0.35rem;">Detected Dynamic Variables:</div>
+            <div id="teach-variables-list" style="display: flex; flex-wrap: wrap; gap: 0.4rem;"></div>
+          </div>
+
+          <!-- WORKFLOW EVOLUTION ENGINE BANNER -->
+          <div id="evolution-proposal-box" class="evolution-banner" style="display: none;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 800; color: #c084fc; font-size: 0.95rem;">
+              <span>⚡ Your workflow appears to have changed.</span>
+            </div>
+            <p id="evolution-summary" style="font-size: 0.8rem; color: #e2e8f0; margin: 0.4rem 0;"></p>
+
+            <div class="diff-box">
+              <div>
+                <span style="color: var(--accent-amber); font-weight: 700;">OLD WORKFLOW:</span>
+                <div id="diff-old-text" style="color: #cbd5e1; margin-top: 0.3rem; word-break: break-all;"></div>
+              </div>
+              <div>
+                <span style="color: var(--accent-emerald); font-weight: 700;">NEW WORKFLOW:</span>
+                <div id="diff-new-text" style="color: #a7f3d0; margin-top: 0.3rem; word-break: break-all;"></div>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 0.65rem; margin-top: 0.85rem;">
+              <button class="btn btn-primary btn-sm" onclick="acceptWorkflowEvolution()">UPDATE WORKFLOW</button>
+              <button class="btn btn-secondary btn-sm" onclick="keepOldWorkflow()">KEEP OLD</button>
+              <button class="btn btn-secondary btn-sm" onclick="dismissEvolution()">IGNORE</button>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.75rem; align-items: center; margin-top: 0.85rem; margin-bottom: 0.85rem; flex-wrap: wrap;">
+            <span class="badge" id="teach-target-badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); font-weight: 700;">TARGET: REAL WINDOWS DESKTOP</span>
+            <span class="badge badge-low">ONE APPROVAL REQUIRED</span>
+          </div>
+
+          <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-top: 1rem;">Workflow:</div>
+          <div class="step-list" id="teach-steps-container"></div>
+
+          <!-- Teach Action Buttons -->
+          <div style="display: flex; gap: 0.65rem; margin-top: 1.25rem; flex-wrap: wrap;">
+            <button class="btn btn-success" id="teach-run-btn" onclick="approveAndRunTeachPlan()">
+              ✓ ALLOW & RUN
+            </button>
+            <button class="btn btn-secondary" onclick="approveTeachPlan()">
+              Save Workflow
+            </button>
+            <button class="btn btn-secondary" onclick="editTeachPlan()">
+              Edit
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="rejectTeachPlan()">
+              Discard
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 3. MY WORKFLOWS TAB -->
+    <div id="tab-workflows" class="tab-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <div>
+          <h2 style="font-size: 1.3rem;">Persistent Workflow Memory</h2>
+          <p style="color: var(--text-muted); font-size: 0.88rem;">Saved workflows with version evolution, execution counts, and one-time approval runs.</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-secondary btn-sm" onclick="loadWorkflows()">🔄 Refresh Workflows</button>
+          <button class="btn btn-secondary btn-sm" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);" onclick="deleteAllWorkflows()">🗑️ Delete All Workflows</button>
+        </div>
+      </div>
+
+      <div class="grid-3" id="workflows-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+
+    <!-- 4. ACTIVITY TAB -->
+    <div id="tab-activity" class="tab-content">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <div>
+            <h2 style="font-size: 1.3rem;">Recent Activity Stream</h2>
+            <p style="color: var(--text-muted); font-size: 0.88rem;">Audit log of observed desktop events and semantic actions recorded by WorkFlowOS.</p>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="loadActivityLog()">🔄 Refresh Activity</button>
+        </div>
+
+        <div id="activity-table-container" style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.84rem; text-align: left;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                <th style="padding: 0.75rem;">Timestamp</th>
+                <th style="padding: 0.75rem;">Semantic Action</th>
+                <th style="padding: 0.75rem;">App / Target</th>
+                <th style="padding: 0.75rem;">Window Title</th>
+                <th style="padding: 0.75rem;">Details</th>
+              </tr>
+            </thead>
+            <tbody id="activity-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 5. SETTINGS TAB -->
+    <div id="tab-settings" class="tab-content">
+      <div class="card" style="max-width: 800px; margin: 0 auto;">
+        <h2 style="font-size: 1.3rem; margin-bottom: 0.35rem;">Settings & Preferences</h2>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.5rem;">Configure AI credentials, safety thresholds, and automation permissions.</p>
+
+        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+          <div>
+            <label style="display: block; font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem;">AI API Key (Optional)</label>
+            <input type="password" id="setting-gemini-key" class="chat-input" placeholder="AIzaSy... (leave blank to use offline heuristic semantic compiler)">
+            <p style="color: var(--text-muted); font-size: 0.76rem; margin-top: 0.3rem;">
+              If not provided, WorkFlowOS operates in 100% local offline mode using its built-in heuristic semantic compiler.
+            </p>
+          </div>
+
+          <div>
+            <label style="display: block; font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem;">Default Automation Mode</label>
+            <select id="setting-default-mode" class="chat-input" onchange="setMode(this.value)">
+              <option value="sandbox">Sandbox Mode (Safe isolated environment)</option>
+              <option value="real">Real Desktop Mode (Interacts with user's Windows desktop)</option>
+            </select>
+          </div>
+
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 1rem;">
+            <div style="font-weight: 700; color: #34d399; font-size: 0.88rem; margin-bottom: 0.3rem;">🔒 Privacy Guarantee</div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">
+              WorkFlowOS only records desktop activity when you explicitly click <b>Start Teaching</b>. When recording is stopped, no background monitoring occurs. Passwords, auth tokens, and sensitive system folders (C:\\Windows) are strictly excluded.
+            </p>
+          </div>
+
+          <div style="border-top: 1px solid var(--border-color); padding-top: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+            <button class="btn btn-secondary btn-sm" onclick="resetSandboxFiles()">Reset Demo Sandbox Files</button>
+            <button class="btn btn-primary" onclick="saveSettings()">Save Preferences</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+
+  <script src="/app.js"></script>
+</body>
+</html>

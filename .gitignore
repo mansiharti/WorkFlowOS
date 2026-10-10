@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Database & Local Data
+*.db
+*.sqlite3
+data/*.db
+data/workflowos.db
+workflowos.db
+
+# Testing & Caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE & OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temp / Scratch files
+scratch/
